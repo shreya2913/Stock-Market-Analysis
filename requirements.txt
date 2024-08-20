@@ -1,0 +1,6 @@
+Stremlit
+yfinance
+fbprophet
+fbprophet.plot
+plotly
+streamlit==3.12.4
