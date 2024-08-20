@@ -1,6 +1,9 @@
-Streamlit
+streamlit
 yfinance
-fbprophet
-fbprophet.plot
+prophet
+prophet.plot
 plotly
+
+from prophet import Prophet
+
 streamlit==1.36.0
