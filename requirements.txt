@@ -1,4 +1,4 @@
-Stremlit
+Streamlit
 yfinance
 fbprophet
 fbprophet.plot
