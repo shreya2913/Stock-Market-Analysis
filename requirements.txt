@@ -1,8 +1,6 @@
-streamlit
-yfinance
-prophet
-prophet.plot
-plotly
+streamlit==1.37.1
+yfinance==0.2.41
+prophet==1.0.0
 
 from prophet import Prophet
 
