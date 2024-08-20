@@ -3,4 +3,4 @@ yfinance
 fbprophet
 fbprophet.plot
 plotly
-streamlit==3.12.4
+streamlit==1.36.0
