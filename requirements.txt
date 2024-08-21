@@ -1,7 +1,7 @@
-streamlit==1.37.1
-yfinance==0.2.41
-prophet==1.0.0
+streamlit==1.26.0
+pandas==2.0.3
+seaborn==0.12.2
+matplotlib==3.7.2
+prophet==1.1
+scikit-learn==1.3.1
 
-from prophet import Prophet
-
-streamlit==1.36.0
