@@ -7,7 +7,6 @@ from sklearn.metrics import mean_squared_error
 import numpy as np
 
 # Function to load data
-@st.cache
 def load_data():
     sbi_data = pd.read_csv('C:/Users/msi00/OneDrive/Desktop/SBI.csv')
     return sbi_data
