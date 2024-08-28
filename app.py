@@ -1,98 +1,116 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-from prophet import Prophet
-from statsmodels.tsa.arima.model import ARIMA
-from sklearn.metrics import mean_squared_error
 import numpy as np
+import matplotlib.pyplot as plt
+from statsmodels.tsa.arima.model import ARIMA
+import warnings
 
-# Function to load data
-def load_data():
-    sbi_data = pd.read_csv('C:/Users/msi00/OneDrive/Desktop/SBI.csv')
-    return sbi_data
+# Suppress warnings
+warnings.filterwarnings("ignore")
 
-# Function to plot the data
-def plot_data(df, title):
-    plt.figure(figsize=(10, 6))
-    plt.plot(df.index, df['Close'], label='Actual', color='blue')
-    plt.xlabel('Date')
-    plt.ylabel('Close Price')
-    plt.title(title)
-    plt.legend()
-    plt.grid(True)
-    st.pyplot(plt)
+# Title of the web app
+st.title("Stock Price Prediction using ARIMA")
 
-# Function to train and predict using ARIMA
-def arima_forecast(df, start_date, end_date, p, d, q):
-    df = df[['Date', 'Close']].copy()  # Ensure 'Date' column is available
-    df['Date'] = pd.to_datetime(df['Date'], format='%d-%m-%Y')  # Adjust format here
-    df.set_index('Date', inplace=True)
-    df = df.loc[start_date:end_date]  # Filter data based on date range
-    model = ARIMA(df['Close'], order=(p, d, q))  # Use user-defined ARIMA parameters
-    model_fit = model.fit()
-    forecast = model_fit.forecast(steps=30)  # Forecast for 30 days ahead
-    return forecast, model_fit
+# Load the dataset directly (assuming file path is provided)
+file_path = "C:/users/msi00/OneDrive/Desktop/SBI.csv"
+data = pd.read_csv(file_path)
 
-# Function to train and predict using Prophet
-def prophet_forecast(df, start_date, end_date):
-    if df.index.name == 'Date':
-        df = df.reset_index()  # Make 'Date' a column if it's an index
-    df = df[['Date', 'Close']].copy()
-    df.columns = ['ds', 'y']
-    df['ds'] = pd.to_datetime(df['ds'], format='%d-%m-%Y')  # Adjust format here
-    df = df[(df['ds'] >= pd.to_datetime(start_date)) & (df['ds'] <= pd.to_datetime(end_date))]
-    model = Prophet()
-    model.fit(df)
-    future = model.make_future_dataframe(periods=30)
-    forecast = model.predict(future)
-    return forecast
+# Convert Date column to datetime format
+data['Date'] = pd.to_datetime(data['Date'], format='%d-%m-%Y')
+data.set_index('Date', inplace=True)
 
-# Load data
-sbi_data = load_data()
+# Display first few rows of the dataset
+st.write("First few rows of the dataset:")
+st.dataframe(data.head())
 
-# Ensure 'Date' column is in datetime format
-sbi_data['Date'] = pd.to_datetime(sbi_data['Date'], format='%d-%m-%Y')
+# Display basic information about the dataset
+st.write("Dataset Info:")
+st.write(data.describe())
 
-# Streamlit app
-st.title('SBI Stock Analysis and Forecasting')
+# Plot the closing price
+st.subheader("Closing Price over Time")
+fig, ax = plt.subplots()
+ax.plot(data['Close'], label='Close Price')
+ax.set_xlabel('Date')
+ax.set_ylabel('Price')
+ax.legend()
+st.pyplot(fig)
 
-# Date range selection
-min_date = sbi_data['Date'].min().date()
-max_date = sbi_data['Date'].max().date()
-start_date = st.date_input('Start Date', min_date)
-end_date = st.date_input('End Date', max_date)
+# Use the entire dataset for ARIMA model training
+stock_prices = data['Close']
 
-# Filter data based on selected date range
-sbi_data = sbi_data[(sbi_data['Date'] >= pd.to_datetime(start_date)) & (sbi_data['Date'] <= pd.to_datetime(end_date))]
-sbi_data.set_index('Date', inplace=True)  # Set 'Date' as index for filtering
+# ARIMA model training
+st.subheader("Training the ARIMA Model")
+arima_order = st.selectbox("Select ARIMA order (p, d, q)", [(5, 1, 0), (2, 1, 2), (3, 1, 0)])
 
-# Show the actual data
-st.subheader('Actual Stock Data')
-plot_data(sbi_data, 'SBI Stock Prices')
+model = ARIMA(stock_prices, order=arima_order)
+arima_model = model.fit()
 
-# Model selection
-model_option = st.selectbox('Choose Forecasting Model:', ['ARIMA', 'Prophet'])
+# Predict future stock prices based on user-selected date range
+st.subheader("Future Stock Price Prediction")
 
-if model_option == 'ARIMA':
-    # ARIMA parameter inputs
-    p = st.number_input('ARIMA Parameter p:', min_value=0, max_value=10, value=5)
-    d = st.number_input('ARIMA Parameter d:', min_value=0, max_value=3, value=1)
-    q = st.number_input('ARIMA Parameter q:', min_value=0, max_value=10, value=0)
+# Date pickers for future prediction range
+last_date = stock_prices.index[-1]
+start_date = st.date_input("Select the start date for prediction", value=last_date + pd.DateOffset(1), min_value=last_date + pd.DateOffset(1))
+end_date = st.date_input("Select the end date for prediction", value=last_date + pd.DateOffset(30), min_value=start_date)
+
+# Calculate the number of future steps (days) to predict based on the selected date range
+future_steps = (end_date - start_date).days + 1
+
+if future_steps > 0:
+    future_predictions = arima_model.forecast(steps=future_steps)
+
+    # Generate future dates based on the selected range
+    future_dates = pd.date_range(start=start_date, periods=future_steps, freq='D')
+
+    # Show predicted future values first
+    st.write("Future Predictions:")
+    future_df = pd.DataFrame({'Date': future_dates, 'Predicted Prices': future_predictions})
+    st.dataframe(future_df)
+
+    # Plot future predictions below the data
+    st.subheader("Predicted Future Stock Prices")
+    fig3, ax3 = plt.subplots()
+    ax3.plot(stock_prices.index, stock_prices, label='Historical Prices', color='blue')
+    ax3.plot(future_dates, future_predictions, label='Future Predicted Prices', linestyle='--', color='orange')
+    ax3.set_xlabel('Date')
+    ax3.set_ylabel('Price')
+    ax3.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%b %Y'))
+    ax3.legend()
+    st.pyplot(fig3)
+
+    # Plot combined graph: historical and future predictions
+    st.subheader("Combined Graph: Historical and Future Predictions")
+    fig4, ax4 = plt.subplots()
+    ax4.plot(stock_prices.index, stock_prices, label='Historical Prices', color='blue')
+    ax4.plot(future_dates, future_predictions, label='Future Predicted Prices', linestyle='--', color='orange')
+    ax4.set_xlabel('Date')
+    ax4.set_ylabel('Price')
+    ax4.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%b %Y'))
+    ax4.legend()
+    st.pyplot(fig4)
+
+    # Additional: Predict the next 30 days regardless of user-selected dates
+    st.subheader("Predicted Prices for the Next 30 Days")
+
+    # Predict the next 30 days
+    next_30_days = arima_model.forecast(steps=30)
+    next_30_dates = pd.date_range(start=last_date + pd.DateOffset(1), periods=30, freq='D')
     
-    # Reset index before passing to the function
-    sbi_data = sbi_data.reset_index()
-    forecast, model_fit = arima_forecast(sbi_data, start_date, end_date, p, d, q)
-    st.subheader('ARIMA Forecast')
-    st.line_chart(forecast)
-    st.write('Forecast Mean Squared Error:', mean_squared_error(sbi_data['Close'].iloc[-30:], forecast))
-elif model_option == 'Prophet':
-    forecast = prophet_forecast(sbi_data, start_date, end_date)
-    st.subheader('Prophet Forecast')
-    fig = plt.figure(figsize=(10, 6))
-    plt.plot(forecast['ds'], forecast['yhat'], label='Forecast', color='orange')
-    plt.xlabel('Date')
-    plt.ylabel('Close Price')
-    plt.title('Prophet Forecast')
-    plt.legend()
-    plt.grid(True)
-    st.pyplot(fig)
+    # Show the next 30 days predictions first
+    st.write("Next 30 Days Predictions:")
+    next_30_df = pd.DataFrame({'Date': next_30_dates, 'Predicted Prices': next_30_days})
+    st.dataframe(next_30_df)
+
+    # Plot the next 30 days predictions below the data
+    fig5, ax5 = plt.subplots()
+    ax5.plot(stock_prices.index, stock_prices, label='Historical Prices', color='blue')
+    ax5.plot(next_30_dates, next_30_days, label='Next 30 Days Predictions', linestyle='--', color='green')
+    ax5.set_xlabel('Date')
+    ax5.set_ylabel('Price')
+    ax5.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%b %Y'))
+    ax5.legend()
+    st.pyplot(fig5)
+    
+else:
+    st.error("Please ensure that the end date is after the start date.")
